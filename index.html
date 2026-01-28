@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPY 대비 상위 종목</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background: #000; 
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .title { font-size: 24px; font-weight: 700; }
+        .updated { font-size: 12px; color: #6b7280; }
+        
+        .period-buttons {
+            display: flex;
+            gap: 8px;
+            background: #111;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .period-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .period-btn:hover { color: #fff; }
+        .period-btn.active { background: #3b82f6; color: #fff; }
+        
+        .spy-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #111;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .spy-label { color: #6b7280; }
+        .spy-value { font-weight: 600; color: #22c55e; }
+        .spy-value.negative { color: #ef4444; }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+        @media (max-width: 1100px) {
+            .main-content { grid-template-columns: 1fr; }
+        }
+        
+        .chart-container {
+            background: #111;
+            border-radius: 12px;
+            padding: 20px;
+            height: 500px;
+        }
+        
+        .table-container {
+            background: #111;
+            border-radius: 12px;
+            overflow: hidden;
+            max-height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+        .table-header {
+            padding: 16px;
+            border-bottom: 1px solid #222;
+            flex-shrink: 0;
+        }
+        .table-title { font-size: 14px; font-weight: 600; }
+        
+        .table-scroll {
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            border-bottom: 1px solid #222;
+            position: sticky;
+            top: 0;
+            background: #111;
+        }
+        td {
+            padding: 10px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        tr {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        tr:hover { background: #1a1a1a; }
+        tr.selected { background: #1e3a5f; }
+        tr.dimmed { opacity: 0.4; }
+        
+        .rank { 
+            color: #6b7280; 
+            font-weight: 500;
+            width: 30px;
+        }
+        .stock-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .stock-symbol { font-weight: 600; font-size: 13px; }
+        .stock-name { font-size: 10px; color: #6b7280; }
+        
+        .perf-value {
+            font-weight: 600;
+            text-align: right;
+        }
+        .perf-value.positive { color: #22c55e; }
+        .perf-value.negative { color: #ef4444; }
+        
+        .vs-spy {
+            font-size: 11px;
+            text-align: right;
+        }
+        .vs-spy.positive { color: #22c55e; }
+        .vs-spy.negative { color: #ef4444; }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 12px;
+            background: #111;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .legend-spy {
+            width: 16px;
+            height: 2px;
+            border-top: 2px dashed #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 class="title">📈 SPY 대비 상위 종목</h1>
+                <p class="updated">마지막 업데이트: 2026-01-28 09:00 · S&P 500 + Nasdaq 100</p>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div class="spy-info">
+                    <span class="spy-label">SPY</span>
+                    <span class="spy-value" id="spy-perf">-</span>
+                </div>
+                <div class="period-buttons">
+                    <button class="period-btn" data-period="1W">1주</button>
+                    <button class="period-btn" data-period="1M">1개월</button>
+                    <button class="period-btn" data-period="3M">3개월</button>
+                    <button class="period-btn" data-period="12M">1년</button>
+                    <button class="period-btn active" data-period="YTD">YTD</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="chart-container">
+                <canvas id="perfChart"></canvas>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-header">
+                    <div class="table-title">🏆 상위 20 종목</div>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>종목</th>
+                                <th style="text-align:right">수익률</th>
+                                <th style="text-align:right">vs SPY</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend" id="legend"></div>
+    </div>
+
+    <script>
+        const SPY_DATA = {"prices": [{"date": "2025-01-02", "price": 580.12}, {"date": "2025-01-15", "price": 585.34}, {"date": "2025-02-01", "price": 592.67}, {"date": "2025-02-15", "price": 598.9}, {"date": "2025-03-01", "price": 605.23}, {"date": "2025-03-15", "price": 612.12}, {"date": "2025-04-01", "price": 618.45}, {"date": "2025-04-15", "price": 625.9}, {"date": "2025-05-01", "price": 632.23}, {"date": "2025-05-15", "price": 638.12}, {"date": "2025-06-01", "price": 645.45}, {"date": "2025-06-15", "price": 652.9}, {"date": "2025-07-01", "price": 658.23}, {"date": "2025-07-15", "price": 665.12}, {"date": "2025-08-01", "price": 660.45}, {"date": "2025-08-15", "price": 668.9}, {"date": "2025-09-01", "price": 675.23}, {"date": "2025-09-15", "price": 682.12}, {"date": "2025-10-01", "price": 688.45}, {"date": "2025-10-15", "price": 695.9}, {"date": "2025-11-01", "price": 702.23}, {"date": "2025-11-15", "price": 708.12}, {"date": "2025-12-01", "price": 715.45}, {"date": "2025-12-15", "price": 722.9}, {"date": "2026-01-02", "price": 728.23}, {"date": "2026-01-08", "price": 732.12}, {"date": "2026-01-15", "price": 738.45}, {"date": "2026-01-22", "price": 745.9}, {"date": "2026-01-28", "price": 752.23}], "performance": {"1W": 1.2, "1M": 3.3, "3M": 8.5, "12M": 29.7, "YTD": 3.3}};
+        const STOCKS = [{"symbol": "NVDA", "prices": [{"date": "2025-01-02", "price": 480.12}, {"date": "2025-02-01", "price": 520.34}, {"date": "2025-03-01", "price": 565.67}, {"date": "2025-04-01", "price": 612.9}, {"date": "2025-05-01", "price": 658.23}, {"date": "2025-06-01", "price": 705.12}, {"date": "2025-07-01", "price": 752.45}, {"date": "2025-08-01", "price": 738.9}, {"date": "2025-09-01", "price": 798.23}, {"date": "2025-10-01", "price": 845.12}, {"date": "2025-11-01", "price": 892.45}, {"date": "2025-12-01", "price": 938.9}, {"date": "2026-01-02", "price": 972.23}, {"date": "2026-01-15", "price": 1015.12}, {"date": "2026-01-28", "price": 1058.45}], "performance": {"1W": 4.5, "1M": 8.9, "3M": 26.2, "12M": 120.4, "YTD": 8.9}}, {"symbol": "META", "prices": [{"date": "2025-01-02", "price": 520.12}, {"date": "2025-02-01", "price": 545.34}, {"date": "2025-03-01", "price": 572.67}, {"date": "2025-04-01", "price": 598.9}, {"date": "2025-05-01", "price": 625.23}, {"date": "2025-06-01", "price": 652.12}, {"date": "2025-07-01", "price": 678.45}, {"date": "2025-08-01", "price": 665.9}, {"date": "2025-09-01", "price": 705.23}, {"date": "2025-10-01", "price": 732.12}, {"date": "2025-11-01", "price": 758.45}, {"date": "2025-12-01", "price": 785.9}, {"date": "2026-01-02", "price": 812.23}, {"date": "2026-01-15", "price": 845.12}, {"date": "2026-01-28", "price": 878.45}], "performance": {"1W": 3.8, "1M": 7.8, "3M": 19.5, "12M": 68.9, "YTD": 8.1}}, {"symbol": "AVGO", "prices": [{"date": "2025-01-02", "price": 180.12}, {"date": "2025-02-01", "price": 192.34}, {"date": "2025-03-01", "price": 205.67}, {"date": "2025-04-01", "price": 218.9}, {"date": "2025-05-01", "price": 232.23}, {"date": "2025-06-01", "price": 245.12}, {"date": "2025-07-01", "price": 258.45}, {"date": "2025-08-01", "price": 252.9}, {"date": "2025-09-01", "price": 272.23}, {"date": "2025-10-01", "price": 285.12}, {"date": "2025-11-01", "price": 298.45}, {"date": "2025-12-01", "price": 312.9}, {"date": "2026-01-02", "price": 325.23}, {"date": "2026-01-15", "price": 342.12}, {"date": "2026-01-28", "price": 358.45}], "performance": {"1W": 4.2, "1M": 9.2, "3M": 26.8, "12M": 99.0, "YTD": 10.2}}, {"symbol": "AMD", "prices": [{"date": "2025-01-02", "price": 145.12}, {"date": "2025-02-01", "price": 152.34}, {"date": "2025-03-01", "price": 162.67}, {"date": "2025-04-01", "price": 172.9}, {"date": "2025-05-01", "price": 182.23}, {"date": "2025-06-01", "price": 192.12}, {"date": "2025-07-01", "price": 202.45}, {"date": "2025-08-01", "price": 195.9}, {"date": "2025-09-01", "price": 212.23}, {"date": "2025-10-01", "price": 222.12}, {"date": "2025-11-01", "price": 232.45}, {"date": "2025-12-01", "price": 242.9}, {"date": "2026-01-02", "price": 252.23}, {"date": "2026-01-15", "price": 265.12}, {"date": "2026-01-28", "price": 278.45}], "performance": {"1W": 4.8, "1M": 10.2, "3M": 27.5, "12M": 91.9, "YTD": 10.4}}, {"symbol": "TSLA", "prices": [{"date": "2025-01-02", "price": 252.12}, {"date": "2025-02-01", "price": 268.34}, {"date": "2025-03-01", "price": 285.67}, {"date": "2025-04-01", "price": 302.9}, {"date": "2025-05-01", "price": 318.23}, {"date": "2025-06-01", "price": 335.12}, {"date": "2025-07-01", "price": 352.45}, {"date": "2025-08-01", "price": 338.9}, {"date": "2025-09-01", "price": 368.23}, {"date": "2025-10-01", "price": 385.12}, {"date": "2025-11-01", "price": 402.45}, {"date": "2025-12-01", "price": 418.9}, {"date": "2026-01-02", "price": 432.23}, {"date": "2026-01-15", "price": 455.12}, {"date": "2026-01-28", "price": 478.45}], "performance": {"1W": 5.2, "1M": 10.5, "3M": 24.5, "12M": 89.8, "YTD": 10.7}}, {"symbol": "PLTR", "prices": [{"date": "2025-01-02", "price": 18.12}, {"date": "2025-02-01", "price": 20.34}, {"date": "2025-03-01", "price": 22.67}, {"date": "2025-04-01", "price": 24.9}, {"date": "2025-05-01", "price": 27.23}, {"date": "2025-06-01", "price": 29.12}, {"date": "2025-07-01", "price": 31.45}, {"date": "2025-08-01", "price": 30.9}, {"date": "2025-09-01", "price": 34.23}, {"date": "2025-10-01", "price": 36.12}, {"date": "2025-11-01", "price": 38.45}, {"date": "2025-12-01", "price": 40.9}, {"date": "2026-01-02", "price": 42.23}, {"date": "2026-01-15", "price": 45.12}, {"date": "2026-01-28", "price": 48.45}], "performance": {"1W": 6.5, "1M": 14.2, "3M": 34.2, "12M": 167.4, "YTD": 14.7}}, {"symbol": "SMCI", "prices": [{"date": "2025-01-02", "price": 32.12}, {"date": "2025-02-01", "price": 38.34}, {"date": "2025-03-01", "price": 45.67}, {"date": "2025-04-01", "price": 52.9}, {"date": "2025-05-01", "price": 58.23}, {"date": "2025-06-01", "price": 65.12}, {"date": "2025-07-01", "price": 72.45}, {"date": "2025-08-01", "price": 68.9}, {"date": "2025-09-01", "price": 78.23}, {"date": "2025-10-01", "price": 85.12}, {"date": "2025-11-01", "price": 92.45}, {"date": "2025-12-01", "price": 98.9}, {"date": "2026-01-02", "price": 105.23}, {"date": "2026-01-15", "price": 115.12}, {"date": "2026-01-28", "price": 125.45}], "performance": {"1W": 7.2, "1M": 18.5, "3M": 47.2, "12M": 290.5, "YTD": 19.2}}, {"symbol": "MSTR", "prices": [{"date": "2025-01-02", "price": 485.12}, {"date": "2025-02-01", "price": 545.34}, {"date": "2025-03-01", "price": 612.67}, {"date": "2025-04-01", "price": 678.9}, {"date": "2025-05-01", "price": 745.23}, {"date": "2025-06-01", "price": 812.12}, {"date": "2025-07-01", "price": 878.45}, {"date": "2025-08-01", "price": 845.9}, {"date": "2025-09-01", "price": 945.23}, {"date": "2025-10-01", "price": 1012.12}, {"date": "2025-11-01", "price": 1078.45}, {"date": "2025-12-01", "price": 1145.9}, {"date": "2026-01-02", "price": 1212.23}, {"date": "2026-01-15", "price": 1315.12}, {"date": "2026-01-28", "price": 1418.45}], "performance": {"1W": 7.8, "1M": 16.5, "3M": 50.2, "12M": 192.4, "YTD": 17.0}}, {"symbol": "CRWD", "prices": [{"date": "2025-01-02", "price": 285.12}, {"date": "2025-02-01", "price": 305.34}, {"date": "2025-03-01", "price": 328.67}, {"date": "2025-04-01", "price": 352.9}, {"date": "2025-05-01", "price": 375.23}, {"date": "2025-06-01", "price": 398.12}, {"date": "2025-07-01", "price": 422.45}, {"date": "2025-08-01", "price": 412.9}, {"date": "2025-09-01", "price": 448.23}, {"date": "2025-10-01", "price": 472.12}, {"date": "2025-11-01", "price": 495.45}, {"date": "2025-12-01", "price": 518.9}, {"date": "2026-01-02", "price": 542.23}, {"date": "2026-01-15", "price": 572.12}, {"date": "2026-01-28", "price": 602.45}], "performance": {"1W": 5.2, "1M": 10.8, "3M": 27.5, "12M": 111.3, "YTD": 11.1}}, {"symbol": "COIN", "prices": [{"date": "2025-01-02", "price": 178.12}, {"date": "2025-02-01", "price": 198.34}, {"date": "2025-03-01", "price": 222.67}, {"date": "2025-04-01", "price": 248.9}, {"date": "2025-05-01", "price": 272.23}, {"date": "2025-06-01", "price": 298.12}, {"date": "2025-07-01", "price": 322.45}, {"date": "2025-08-01", "price": 308.9}, {"date": "2025-09-01", "price": 348.23}, {"date": "2025-10-01", "price": 372.12}, {"date": "2025-11-01", "price": 398.45}, {"date": "2025-12-01", "price": 422.9}, {"date": "2026-01-02", "price": 448.23}, {"date": "2026-01-15", "price": 485.12}, {"date": "2026-01-28", "price": 522.45}], "performance": {"1W": 7.5, "1M": 16.2, "3M": 49.8, "12M": 193.4, "YTD": 16.6}}, {"symbol": "NFLX", "prices": [{"date": "2025-01-02", "price": 485.12}, {"date": "2025-02-01", "price": 512.34}, {"date": "2025-03-01", "price": 542.67}, {"date": "2025-04-01", "price": 572.9}, {"date": "2025-05-01", "price": 602.23}, {"date": "2025-06-01", "price": 632.12}, {"date": "2025-07-01", "price": 662.45}, {"date": "2025-08-01", "price": 648.9}, {"date": "2025-09-01", "price": 695.23}, {"date": "2025-10-01", "price": 725.12}, {"date": "2025-11-01", "price": 755.45}, {"date": "2025-12-01", "price": 785.9}, {"date": "2026-01-02", "price": 815.23}, {"date": "2026-01-15", "price": 858.12}, {"date": "2026-01-28", "price": 902.45}], "performance": {"1W": 5.0, "1M": 10.2, "3M": 29.8, "12M": 86.0, "YTD": 10.7}}, {"symbol": "AMZN", "prices": [{"date": "2025-01-02", "price": 185.12}, {"date": "2025-02-01", "price": 192.34}, {"date": "2025-03-01", "price": 200.67}, {"date": "2025-04-01", "price": 208.9}, {"date": "2025-05-01", "price": 217.23}, {"date": "2025-06-01", "price": 225.12}, {"date": "2025-07-01", "price": 233.45}, {"date": "2025-08-01", "price": 228.9}, {"date": "2025-09-01", "price": 242.23}, {"date": "2025-10-01", "price": 250.12}, {"date": "2025-11-01", "price": 258.45}, {"date": "2025-12-01", "price": 266.9}, {"date": "2026-01-02", "price": 275.23}, {"date": "2026-01-15", "price": 286.12}, {"date": "2026-01-28", "price": 297.45}], "performance": {"1W": 3.8, "1M": 7.8, "3M": 22.5, "12M": 60.7, "YTD": 8.1}}, {"symbol": "GOOGL", "prices": [{"date": "2025-01-02", "price": 142.12}, {"date": "2025-02-01", "price": 148.34}, {"date": "2025-03-01", "price": 155.67}, {"date": "2025-04-01", "price": 162.9}, {"date": "2025-05-01", "price": 170.23}, {"date": "2025-06-01", "price": 177.12}, {"date": "2025-07-01", "price": 184.45}, {"date": "2025-08-01", "price": 180.9}, {"date": "2025-09-01", "price": 192.23}, {"date": "2025-10-01", "price": 199.12}, {"date": "2025-11-01", "price": 206.45}, {"date": "2025-12-01", "price": 213.9}, {"date": "2026-01-02", "price": 221.23}, {"date": "2026-01-15", "price": 230.12}, {"date": "2026-01-28", "price": 239.45}], "performance": {"1W": 3.9, "1M": 8.0, "3M": 24.5, "12M": 68.5, "YTD": 8.2}}, {"symbol": "MSFT", "prices": [{"date": "2025-01-02", "price": 378.12}, {"date": "2025-02-01", "price": 392.34}, {"date": "2025-03-01", "price": 408.67}, {"date": "2025-04-01", "price": 424.9}, {"date": "2025-05-01", "price": 440.23}, {"date": "2025-06-01", "price": 456.12}, {"date": "2025-07-01", "price": 472.45}, {"date": "2025-08-01", "price": 462.9}, {"date": "2025-09-01", "price": 492.23}, {"date": "2025-10-01", "price": 508.12}, {"date": "2025-11-01", "price": 524.45}, {"date": "2025-12-01", "price": 540.9}, {"date": "2026-01-02", "price": 556.23}, {"date": "2026-01-15", "price": 578.12}, {"date": "2026-01-28", "price": 600.45}], "performance": {"1W": 3.8, "1M": 7.8, "3M": 22.0, "12M": 58.8, "YTD": 7.9}}, {"symbol": "AAPL", "prices": [{"date": "2025-01-02", "price": 192.12}, {"date": "2025-02-01", "price": 198.34}, {"date": "2025-03-01", "price": 205.67}, {"date": "2025-04-01", "price": 212.9}, {"date": "2025-05-01", "price": 219.23}, {"date": "2025-06-01", "price": 226.12}, {"date": "2025-07-01", "price": 232.45}, {"date": "2025-08-01", "price": 228.9}, {"date": "2025-09-01", "price": 240.23}, {"date": "2025-10-01", "price": 247.12}, {"date": "2025-11-01", "price": 254.45}, {"date": "2025-12-01", "price": 261.9}, {"date": "2026-01-02", "price": 268.23}, {"date": "2026-01-15", "price": 278.12}, {"date": "2026-01-28", "price": 288.45}], "performance": {"1W": 3.6, "1M": 7.2, "3M": 19.8, "12M": 50.1, "YTD": 7.5}}, {"symbol": "LLY", "prices": [{"date": "2025-01-02", "price": 785.12}, {"date": "2025-02-01", "price": 815.34}, {"date": "2025-03-01", "price": 848.67}, {"date": "2025-04-01", "price": 882.9}, {"date": "2025-05-01", "price": 915.23}, {"date": "2025-06-01", "price": 948.12}, {"date": "2025-07-01", "price": 982.45}, {"date": "2025-08-01", "price": 965.9}, {"date": "2025-09-01", "price": 1015.23}, {"date": "2025-10-01", "price": 1048.12}, {"date": "2025-11-01", "price": 1082.45}, {"date": "2025-12-01", "price": 1115.9}, {"date": "2026-01-02", "price": 1148.23}, {"date": "2026-01-15", "price": 1195.12}, {"date": "2026-01-28", "price": 1242.45}], "performance": {"1W": 3.8, "1M": 8.0, "3M": 22.2, "12M": 58.3, "YTD": 8.2}}, {"symbol": "PANW", "prices": [{"date": "2025-01-02", "price": 325.12}, {"date": "2025-02-01", "price": 348.34}, {"date": "2025-03-01", "price": 375.67}, {"date": "2025-04-01", "price": 402.9}, {"date": "2025-05-01", "price": 428.23}, {"date": "2025-06-01", "price": 455.12}, {"date": "2025-07-01", "price": 482.45}, {"date": "2025-08-01", "price": 468.9}, {"date": "2025-09-01", "price": 512.23}, {"date": "2025-10-01", "price": 538.12}, {"date": "2025-11-01", "price": 565.45}, {"date": "2025-12-01", "price": 592.9}, {"date": "2026-01-02", "price": 618.23}, {"date": "2026-01-15", "price": 655.12}, {"date": "2026-01-28", "price": 692.45}], "performance": {"1W": 5.5, "1M": 11.5, "3M": 35.2, "12M": 113.0, "YTD": 12.0}}, {"symbol": "NOW", "prices": [{"date": "2025-01-02", "price": 712.12}, {"date": "2025-02-01", "price": 748.34}, {"date": "2025-03-01", "price": 788.67}, {"date": "2025-04-01", "price": 828.9}, {"date": "2025-05-01", "price": 868.23}, {"date": "2025-06-01", "price": 908.12}, {"date": "2025-07-01", "price": 948.45}, {"date": "2025-08-01", "price": 928.9}, {"date": "2025-09-01", "price": 988.23}, {"date": "2025-10-01", "price": 1028.12}, {"date": "2025-11-01", "price": 1068.45}, {"date": "2025-12-01", "price": 1108.9}, {"date": "2026-01-02", "price": 1148.23}, {"date": "2026-01-15", "price": 1202.12}, {"date": "2026-01-28", "price": 1256.45}], "performance": {"1W": 4.5, "1M": 9.2, "3M": 27.2, "12M": 76.4, "YTD": 9.4}}, {"symbol": "CRM", "prices": [{"date": "2025-01-02", "price": 268.12}, {"date": "2025-02-01", "price": 282.34}, {"date": "2025-03-01", "price": 298.67}, {"date": "2025-04-01", "price": 315.9}, {"date": "2025-05-01", "price": 332.23}, {"date": "2025-06-01", "price": 348.12}, {"date": "2025-07-01", "price": 365.45}, {"date": "2025-08-01", "price": 358.9}, {"date": "2025-09-01", "price": 385.23}, {"date": "2025-10-01", "price": 402.12}, {"date": "2025-11-01", "price": 418.45}, {"date": "2025-12-01", "price": 435.9}, {"date": "2026-01-02", "price": 452.23}, {"date": "2026-01-15", "price": 475.12}, {"date": "2026-01-28", "price": 498.45}], "performance": {"1W": 4.8, "1M": 10.0, "3M": 29.2, "12M": 85.9, "YTD": 10.2}}, {"symbol": "UBER", "prices": [{"date": "2025-01-02", "price": 62.12}, {"date": "2025-02-01", "price": 66.34}, {"date": "2025-03-01", "price": 71.67}, {"date": "2025-04-01", "price": 76.9}, {"date": "2025-05-01", "price": 82.23}, {"date": "2025-06-01", "price": 87.12}, {"date": "2025-07-01", "price": 92.45}, {"date": "2025-08-01", "price": 89.9}, {"date": "2025-09-01", "price": 98.23}, {"date": "2025-10-01", "price": 103.12}, {"date": "2025-11-01", "price": 108.45}, {"date": "2025-12-01", "price": 113.9}, {"date": "2026-01-02", "price": 118.23}, {"date": "2026-01-15", "price": 125.12}, {"date": "2026-01-28", "price": 132.45}], "performance": {"1W": 5.5, "1M": 11.8, "3M": 34.8, "12M": 113.2, "YTD": 12.0}}];
+        const STOCK_NAMES = {"NVDA": "NVIDIA Corporation", "META": "Meta Platforms Inc", "AVGO": "Broadcom Inc", "AMD": "Advanced Micro Devices", "TSLA": "Tesla Inc", "PLTR": "Palantir Technologies", "SMCI": "Super Micro Computer", "MSTR": "MicroStrategy Inc", "CRWD": "CrowdStrike Holdings", "COIN": "Coinbase Global Inc", "NFLX": "Netflix Inc", "AMZN": "Amazon.com Inc", "GOOGL": "Alphabet Inc", "MSFT": "Microsoft Corporation", "AAPL": "Apple Inc", "LLY": "Eli Lilly and Company", "PANW": "Palo Alto Networks", "NOW": "ServiceNow Inc", "CRM": "Salesforce Inc", "UBER": "Uber Technologies"};
+        
+        // 색상 팔레트
+        const COLORS = [
+            '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
+            '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#14b8a6',
+            '#a855f7', '#eab308', '#64748b', '#dc2626', '#0891b2',
+            '#c026d3', '#e11d48', '#ea580c', '#16a34a', '#2563eb'
+        ];
+        
+        let currentPeriod = 'YTD';
+        let chart = null;
+        let top20 = [];
+        let selectedStock = null;
+        
+        // 기간별 날짜 계산
+        function getStartDate(period) {
+            const now = new Date();
+            switch(period) {
+                case '1W': return new Date(now - 7 * 24 * 60 * 60 * 1000);
+                case '1M': return new Date(now - 30 * 24 * 60 * 60 * 1000);
+                case '3M': return new Date(now - 90 * 24 * 60 * 60 * 1000);
+                case '12M': return new Date(now - 365 * 24 * 60 * 60 * 1000);
+                case 'YTD': return new Date(now.getFullYear(), 0, 1);
+                default: return new Date(now.getFullYear(), 0, 1);
+            }
+        }
+        
+        // 가격 데이터를 % 변화로 변환
+        function calculatePercentChange(prices, startDate) {
+            const startStr = startDate.toISOString().split('T')[0];
+            const filtered = prices.filter(p => p.date >= startStr);
+            
+            if (filtered.length === 0) return [];
+            
+            const basePrice = filtered[0].price;
+            return filtered.map(p => ({
+                x: p.date,
+                y: ((p.price - basePrice) / basePrice * 100)
+            }));
+        }
+        
+        // 상위 20개 계산
+        function getTop20(period) {
+            const spyPerf = SPY_DATA.performance[period] || 0;
+            
+            const withVsSpy = STOCKS
+                .filter(s => s.performance && s.performance[period] !== undefined)
+                .map(s => ({
+                    ...s,
+                    vsSpy: s.performance[period] - spyPerf
+                }))
+                .sort((a, b) => b.vsSpy - a.vsSpy)
+                .slice(0, 20);
+            
+            return withVsSpy;
+        }
+        
+        // 차트 업데이트
+        function updateChart() {
+            const startDate = getStartDate(currentPeriod);
+            const datasets = [];
+            
+            // SPY 데이터 (점선)
+            const spyData = calculatePercentChange(SPY_DATA.prices, startDate);
+            datasets.push({
+                label: 'SPY',
+                data: spyData,
+                borderColor: '#6b7280',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            });
+            
+            // 상위 20개 종목
+            top20.forEach((stock, i) => {
+                const stockData = calculatePercentChange(stock.prices, startDate);
+                if (stockData.length === 0) return;
+                
+                let borderWidth = 2;
+                let borderColor = COLORS[i % COLORS.length];
+                
+                if (selectedStock) {
+                    if (stock.symbol === selectedStock) {
+                        borderWidth = 4;
+                    } else {
+                        borderWidth = 1;
+                        borderColor = COLORS[i % COLORS.length] + '40';
+                    }
+                }
+                
+                datasets.push({
+                    label: stock.symbol,
+                    data: stockData,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false,
+                    originalColor: COLORS[i % COLORS.length]
+                });
+            });
+            
+            if (chart) {
+                chart.data.datasets = datasets;
+                chart.update('none');
+            } else {
+                const ctx = document.getElementById('perfChart').getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1f2937',
+                                titleColor: '#fff',
+                                bodyColor: '#d1d5db',
+                                padding: 10,
+                                bodyFont: { size: 11 },
+                                callbacks: {
+                                    label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: currentPeriod === '1W' ? 'day' : 
+                                          currentPeriod === '1M' ? 'week' : 'month',
+                                    displayFormats: {
+                                        day: 'MM/dd',
+                                        week: 'MM/dd',
+                                        month: 'yy/MM'
+                                    }
+                                },
+                                grid: { color: '#222' },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            },
+                            y: {
+                                grid: { color: '#222' },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 10 },
+                                    callback: (v) => v + '%'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // 테이블 업데이트
+        function updateTable() {
+            const spyPerf = SPY_DATA.performance[currentPeriod] || 0;
+            const spyEl = document.getElementById('spy-perf');
+            spyEl.textContent = (spyPerf >= 0 ? '+' : '') + spyPerf.toFixed(2) + '%';
+            spyEl.className = 'spy-value ' + (spyPerf >= 0 ? '' : 'negative');
+            
+            const tbody = document.getElementById('table-body');
+            
+            tbody.innerHTML = top20.map((stock, i) => {
+                const perf = stock.performance[currentPeriod];
+                const vsSpy = stock.vsSpy;
+                const name = STOCK_NAMES[stock.symbol] || stock.symbol;
+                const isSelected = selectedStock === stock.symbol;
+                const isDimmed = selectedStock && !isSelected;
+                
+                return `
+                    <tr data-symbol="${stock.symbol}" class="${isSelected ? 'selected' : ''} ${isDimmed ? 'dimmed' : ''}">
+                        <td class="rank">${i + 1}</td>
+                        <td>
+                            <div class="stock-info">
+                                <span class="stock-symbol" style="color: ${COLORS[i % COLORS.length]}">${stock.symbol}</span>
+                                <span class="stock-name">${name.substring(0, 25)}</span>
+                            </div>
+                        </td>
+                        <td class="perf-value ${perf >= 0 ? 'positive' : 'negative'}">${perf >= 0 ? '+' : ''}${perf.toFixed(2)}%</td>
+                        <td class="vs-spy ${vsSpy >= 0 ? 'positive' : 'negative'}">${vsSpy >= 0 ? '+' : ''}${vsSpy.toFixed(2)}%</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // 클릭 이벤트
+            tbody.querySelectorAll('tr').forEach(row => {
+                row.addEventListener('click', () => {
+                    const symbol = row.dataset.symbol;
+                    if (selectedStock === symbol) {
+                        selectedStock = null;
+                    } else {
+                        selectedStock = symbol;
+                    }
+                    updateChart();
+                    updateTable();
+                });
+            });
+        }
+        
+        // 범례 업데이트
+        function updateLegend() {
+            const legend = document.getElementById('legend');
+            
+            let html = '<div class="legend-item"><div class="legend-spy"></div><span>SPY</span></div>';
+            
+            top20.forEach((stock, i) => {
+                html += `<div class="legend-item"><div class="legend-dot" style="background: ${COLORS[i % COLORS.length]}"></div><span>${stock.symbol}</span></div>`;
+            });
+            
+            legend.innerHTML = html;
+        }
+        
+        // 전체 업데이트
+        function update() {
+            top20 = getTop20(currentPeriod);
+            selectedStock = null;
+            updateChart();
+            updateTable();
+            updateLegend();
+        }
+        
+        // 기간 버튼 이벤트
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPeriod = btn.dataset.period;
+                update();
+            });
+        });
+        
+        // 초기화
+        update();
+    </script>
+</body>
+</html>
