@@ -17,6 +17,7 @@ def generate_html():
     spy_json = json.dumps(data["spy"], ensure_ascii=False)
     stocks_json = json.dumps(data["stocks"], ensure_ascii=False)
     stock_names_json = json.dumps(data["stockNames"], ensure_ascii=False)
+    stock_info_json = json.dumps(data.get("stockInfo", {}), ensure_ascii=False)
     
     html = f'''<!DOCTYPE html>
 <html lang="ko">
@@ -200,6 +201,71 @@ def generate_html():
             height: 2px;
             border-top: 2px dashed #6b7280;
         }}
+        
+        .stock-info-card {{
+            display: none;
+            background: #111;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+        }}
+        .stock-info-card.visible {{
+            display: block;
+        }}
+        .info-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            gap: 16px;
+        }}
+        .info-title {{
+            font-size: 18px;
+            font-weight: 700;
+        }}
+        .info-sector {{
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }}
+        .info-close {{
+            background: none;
+            border: none;
+            color: #6b7280;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+        }}
+        .info-close:hover {{
+            color: #fff;
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }}
+        .info-item {{
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 8px;
+        }}
+        .info-label {{
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }}
+        .info-value {{
+            font-size: 16px;
+            font-weight: 600;
+        }}
+        .info-description {{
+            font-size: 13px;
+            color: #9ca3af;
+            line-height: 1.5;
+            padding-top: 16px;
+            border-top: 1px solid #222;
+        }}
     </style>
 </head>
 <body>
@@ -251,12 +317,50 @@ def generate_html():
         </div>
         
         <div class="legend" id="legend"></div>
+        
+        <div class="stock-info-card" id="stock-info-card">
+            <div class="info-header">
+                <div>
+                    <div class="info-title" id="info-title">-</div>
+                    <div class="info-sector" id="info-sector">-</div>
+                </div>
+                <button class="info-close" id="info-close">✕</button>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">시가총액</div>
+                    <div class="info-value" id="info-marketcap">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">현재가</div>
+                    <div class="info-value" id="info-price">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">52주 최고</div>
+                    <div class="info-value" id="info-high52">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">52주 최저</div>
+                    <div class="info-value" id="info-low52">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">PER</div>
+                    <div class="info-value" id="info-per">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">PBR</div>
+                    <div class="info-value" id="info-pbr">-</div>
+                </div>
+            </div>
+            <div class="info-description" id="info-description">-</div>
+        </div>
     </div>
 
     <script>
         const SPY_DATA = {spy_json};
         const STOCKS = {stocks_json};
         const STOCK_NAMES = {stock_names_json};
+        const STOCK_INFO = {stock_info_json};
         
         // 색상 팔레트
         const COLORS = [
@@ -460,9 +564,46 @@ def generate_html():
                     }}
                     updateChart();
                     updateTable();
+                    updateInfoCard();
                 }});
             }});
         }}
+        
+        // 종목 정보 카드 업데이트
+        function updateInfoCard() {{
+            const card = document.getElementById('stock-info-card');
+            
+            if (!selectedStock) {{
+                card.classList.remove('visible');
+                return;
+            }}
+            
+            const info = STOCK_INFO[selectedStock];
+            if (!info || !info.name) {{
+                card.classList.remove('visible');
+                return;
+            }}
+            
+            document.getElementById('info-title').textContent = `${{selectedStock}} - ${{info.name}}`;
+            document.getElementById('info-sector').textContent = info.sector || '-';
+            document.getElementById('info-marketcap').textContent = info.marketCap || '-';
+            document.getElementById('info-price').textContent = info.price ? `$${{info.price.toLocaleString()}}` : '-';
+            document.getElementById('info-high52').textContent = info.high52w ? `$${{info.high52w.toLocaleString()}}` : '-';
+            document.getElementById('info-low52').textContent = info.low52w ? `$${{info.low52w.toLocaleString()}}` : '-';
+            document.getElementById('info-per').textContent = info.per || '-';
+            document.getElementById('info-pbr').textContent = info.pbr || '-';
+            document.getElementById('info-description').textContent = info.description || '설명 없음';
+            
+            card.classList.add('visible');
+        }}
+        
+        // 정보 카드 닫기 버튼
+        document.getElementById('info-close').addEventListener('click', () => {{
+            selectedStock = null;
+            updateChart();
+            updateTable();
+            updateInfoCard();
+        }});
         
         // 범례 업데이트
         function updateLegend() {{
