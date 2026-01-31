@@ -255,18 +255,63 @@ def main():
         for stock in sorted_stocks:
             top_symbols.add(stock["symbol"])
     
-    # 이름 가져오기
+    # 종목 정보 가져오기
+    stock_info = {}
     for symbol in top_symbols:
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
+            
             name = info.get('shortName', info.get('longName', symbol))
             stock_names[symbol] = name
-            time.sleep(0.1)
-        except:
+            
+            # 섹터 한국어 변환
+            sector_map = {
+                'Technology': '기술',
+                'Healthcare': '헬스케어',
+                'Financial Services': '금융',
+                'Consumer Cyclical': '경기소비재',
+                'Consumer Defensive': '필수소비재',
+                'Communication Services': '커뮤니케이션',
+                'Industrials': '산업재',
+                'Energy': '에너지',
+                'Utilities': '유틸리티',
+                'Real Estate': '부동산',
+                'Basic Materials': '소재'
+            }
+            sector_en = info.get('sector', 'N/A')
+            sector_kr = sector_map.get(sector_en, sector_en)
+            
+            # 시가총액 포맷
+            market_cap = info.get('marketCap', 0)
+            if market_cap >= 1e12:
+                market_cap_str = f"${market_cap/1e12:.2f}T"
+            elif market_cap >= 1e9:
+                market_cap_str = f"${market_cap/1e9:.2f}B"
+            elif market_cap >= 1e6:
+                market_cap_str = f"${market_cap/1e6:.2f}M"
+            else:
+                market_cap_str = "N/A"
+            
+            stock_info[symbol] = {
+                "name": name,
+                "sector": sector_kr,
+                "sectorEn": sector_en,
+                "marketCap": market_cap_str,
+                "price": round(info.get('currentPrice', info.get('regularMarketPrice', 0)) or 0, 2),
+                "high52w": round(info.get('fiftyTwoWeekHigh', 0) or 0, 2),
+                "low52w": round(info.get('fiftyTwoWeekLow', 0) or 0, 2),
+                "per": round(info.get('trailingPE', 0) or 0, 2),
+                "pbr": round(info.get('priceToBook', 0) or 0, 2),
+                "description": (info.get('longBusinessSummary', '') or '')[:200]
+            }
+            
+            time.sleep(0.15)
+        except Exception as e:
             stock_names[symbol] = symbol
+            stock_info[symbol] = {"name": symbol}
     
-    print(f"  ✅ {len(stock_names)}개 종목 이름 수집 완료")
+    print(f"  ✅ {len(stock_info)}개 종목 정보 수집 완료")
     
     # 결과 저장
     output = {
@@ -276,7 +321,8 @@ def main():
             "performance": spy_performance
         },
         "stocks": all_stocks,
-        "stockNames": stock_names
+        "stockNames": stock_names,
+        "stockInfo": stock_info
     }
     
     output_path = Path(__file__).parent.parent / "data" / "stocks.json"
