@@ -23,50 +23,67 @@ def generate_html():
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SPY 대비 상위 종목</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        html, body {{ 
+            height: 100%;
+            overflow: hidden;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }}
         body {{ 
             font-family: 'Inter', -apple-system, sans-serif; 
             background: #000; 
             color: #fff;
-            min-height: 100vh;
-            padding: 20px;
+            padding: 16px;
+            -webkit-overflow-scrolling: touch;
         }}
-        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .container {{ 
+            max-width: 1400px; 
+            margin: 0 auto;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }}
         
         .header {{ 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
-            gap: 16px;
+            gap: 10px;
+            flex-shrink: 0;
         }}
-        .title {{ font-size: 24px; font-weight: 700; }}
-        .updated {{ font-size: 12px; color: #6b7280; }}
+        .title {{ font-size: 20px; font-weight: 700; }}
+        .updated {{ font-size: 11px; color: #6b7280; margin-top: 2px; }}
         
         .period-buttons {{
             display: flex;
-            gap: 8px;
+            gap: 4px;
             background: #111;
-            padding: 4px;
+            padding: 3px;
             border-radius: 8px;
+            flex-shrink: 0;
         }}
         .period-btn {{
-            padding: 8px 16px;
+            padding: 6px 12px;
             border: none;
             background: transparent;
             color: #9ca3af;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             border-radius: 6px;
             transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }}
         .period-btn:hover {{ color: #fff; }}
         .period-btn.active {{ background: #3b82f6; color: #fff; }}
@@ -74,11 +91,12 @@ def generate_html():
         .spy-info {{
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
+            gap: 6px;
+            padding: 6px 12px;
             background: #111;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
+            flex-shrink: 0;
         }}
         .spy-label {{ color: #6b7280; }}
         .spy-value {{ font-weight: 600; color: #22c55e; }}
@@ -86,39 +104,41 @@ def generate_html():
         
         .main-content {{
             display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 20px;
-        }}
-        @media (max-width: 1100px) {{
-            .main-content {{ grid-template-columns: 1fr; }}
+            grid-template-columns: 1fr 340px;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
         }}
         
         .chart-container {{
             background: #111;
             border-radius: 12px;
-            padding: 20px;
-            height: 500px;
+            padding: 14px;
+            min-height: 0;
         }}
         
         .table-container {{
             background: #111;
             border-radius: 12px;
             overflow: hidden;
-            max-height: 500px;
             display: flex;
             flex-direction: column;
+            min-height: 0;
         }}
         .table-header {{
-            padding: 16px;
+            padding: 12px;
             border-bottom: 1px solid #222;
             flex-shrink: 0;
         }}
-        .table-title {{ font-size: 14px; font-weight: 600; }}
+        .table-title {{ font-size: 13px; font-weight: 600; }}
         
         .table-scroll {{
             overflow-y: auto;
             flex: 1;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }}
+        .table-scroll::-webkit-scrollbar {{ display: none; }}
         
         table {{
             width: 100%;
@@ -126,8 +146,8 @@ def generate_html():
         }}
         th {{
             text-align: left;
-            padding: 10px 12px;
-            font-size: 10px;
+            padding: 8px 10px;
+            font-size: 9px;
             font-weight: 600;
             color: #6b7280;
             text-transform: uppercase;
@@ -137,30 +157,34 @@ def generate_html():
             background: #111;
         }}
         td {{
-            padding: 10px 12px;
-            font-size: 12px;
+            padding: 7px 10px;
+            font-size: 11px;
             border-bottom: 1px solid #1a1a1a;
         }}
         tr {{
             cursor: pointer;
             transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }}
-        tr:hover {{ background: #1a1a1a; }}
+        @media (hover: hover) {{
+            tr:hover {{ background: #1a1a1a; }}
+        }}
+        tr:active {{ background: #1a1a1a; }}
         tr.selected {{ background: #1e3a5f; }}
         tr.dimmed {{ opacity: 0.4; }}
         
         .rank {{ 
             color: #6b7280; 
             font-weight: 500;
-            width: 30px;
+            width: 24px;
         }}
         .stock-info {{
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
         }}
-        .stock-symbol {{ font-weight: 600; font-size: 13px; }}
-        .stock-name {{ font-size: 10px; color: #6b7280; }}
+        .stock-symbol {{ font-weight: 600; font-size: 12px; }}
+        .stock-name {{ font-size: 9px; color: #6b7280; }}
         
         .perf-value {{
             font-weight: 600;
@@ -170,7 +194,7 @@ def generate_html():
         .perf-value.negative {{ color: #ef4444; }}
         
         .vs-spy {{
-            font-size: 11px;
+            font-size: 10px;
             text-align: right;
         }}
         .vs-spy.positive {{ color: #22c55e; }}
@@ -180,11 +204,12 @@ def generate_html():
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-top: 16px;
-            padding: 12px;
+            margin-top: 10px;
+            padding: 10px 12px;
             background: #111;
-            border-radius: 8px;
-            font-size: 11px;
+            border-radius: 10px;
+            font-size: 10px;
+            flex-shrink: 0;
         }}
         .legend-item {{
             display: flex;
@@ -192,22 +217,25 @@ def generate_html():
             gap: 4px;
         }}
         .legend-dot {{
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
+            flex-shrink: 0;
         }}
         .legend-spy {{
-            width: 16px;
+            width: 14px;
             height: 2px;
             border-top: 2px dashed #6b7280;
+            flex-shrink: 0;
         }}
         
         .stock-info-card {{
             display: none;
             background: #111;
             border-radius: 12px;
-            padding: 20px;
-            margin-top: 16px;
+            padding: 16px;
+            margin-top: 10px;
+            flex-shrink: 0;
         }}
         .stock-info-card.visible {{
             display: block;
@@ -216,55 +244,127 @@ def generate_html():
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 16px;
-            gap: 16px;
+            margin-bottom: 12px;
+            gap: 12px;
         }}
         .info-title {{
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
         }}
         .info-sector {{
-            font-size: 12px;
+            font-size: 11px;
             color: #9ca3af;
-            margin-top: 4px;
+            margin-top: 2px;
         }}
         .info-close {{
             background: none;
             border: none;
             color: #6b7280;
-            font-size: 20px;
+            font-size: 18px;
             cursor: pointer;
             padding: 4px 8px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }}
-        .info-close:hover {{
-            color: #fff;
-        }}
+        .info-close:hover {{ color: #fff; }}
         .info-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 16px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
         }}
         .info-item {{
             background: #1a1a1a;
-            padding: 12px;
+            padding: 10px;
             border-radius: 8px;
         }}
         .info-label {{
-            font-size: 11px;
+            font-size: 10px;
             color: #6b7280;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }}
         .info-value {{
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
         }}
         .info-description {{
-            font-size: 13px;
+            font-size: 12px;
             color: #9ca3af;
             line-height: 1.5;
-            padding-top: 16px;
+            padding-top: 12px;
             border-top: 1px solid #222;
+        }}
+
+        /* === TABLET === */
+        @media (max-width: 1100px) {{
+            .main-content {{ 
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }}
+            .table-container {{ max-height: 200px; }}
+        }}
+
+        /* === MOBILE === */
+        @media (max-width: 600px) {{
+            body {{ padding: 10px; }}
+            .header {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                margin-bottom: 8px;
+            }}
+            .title {{ font-size: 16px; }}
+            .period-buttons {{
+                width: 100%;
+                justify-content: space-between;
+            }}
+            .period-btn {{
+                flex: 1;
+                padding: 7px 2px;
+                font-size: 11px;
+                text-align: center;
+            }}
+            .spy-info {{ font-size: 11px; padding: 5px 10px; }}
+            .main-content {{
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+                gap: 8px;
+            }}
+            .chart-container {{
+                padding: 8px 4px 8px 8px;
+                border-radius: 10px;
+            }}
+            .table-container {{
+                max-height: 180px;
+                border-radius: 10px;
+            }}
+            .table-header {{ padding: 10px; }}
+            .table-title {{ font-size: 12px; }}
+            th {{ padding: 6px 8px; font-size: 8px; }}
+            td {{ padding: 6px 8px; font-size: 10px; }}
+            .stock-symbol {{ font-size: 11px; }}
+            .stock-name {{ font-size: 8px; }}
+            .legend {{
+                gap: 6px;
+                padding: 8px 10px;
+                margin-top: 8px;
+                border-radius: 8px;
+                font-size: 9px;
+            }}
+            .legend-dot {{ width: 6px; height: 6px; }}
+            .info-grid {{ grid-template-columns: repeat(3, 1fr); gap: 8px; }}
+            .info-value {{ font-size: 12px; }}
+            .info-title {{ font-size: 14px; }}
+            .info-description {{ font-size: 11px; }}
+        }}
+
+        /* === 아주 작은 화면 (imweb 좁은 임베드) === */
+        @media (max-width: 420px) {{
+            body {{ padding: 8px; }}
+            .title {{ font-size: 14px; }}
+            .table-container {{ max-height: 150px; }}
+            .legend {{ gap: 4px; padding: 6px 8px; font-size: 8px; }}
+            .info-grid {{ grid-template-columns: repeat(2, 1fr); }}
         }}
     </style>
 </head>
@@ -275,7 +375,7 @@ def generate_html():
                 <h1 class="title">📈 SPY 대비 상위 종목</h1>
                 <p class="updated">마지막 업데이트: {last_updated} · S&P 500 + Nasdaq 100</p>
             </div>
-            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                 <div class="spy-info">
                     <span class="spy-label">SPY</span>
                     <span class="spy-value" id="spy-perf">-</span>
@@ -362,7 +462,6 @@ def generate_html():
         const STOCK_NAMES = {stock_names_json};
         const STOCK_INFO = {stock_info_json};
         
-        // 색상 팔레트
         const COLORS = [
             '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
             '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#14b8a6',
@@ -375,7 +474,6 @@ def generate_html():
         let top20 = [];
         let selectedStock = null;
         
-        // 기간별 날짜 계산
         function getStartDate(period) {{
             const now = new Date();
             switch(period) {{
@@ -388,7 +486,6 @@ def generate_html():
             }}
         }}
         
-        // 가격 데이터를 % 변화로 변환
         function calculatePercentChange(prices, startDate) {{
             const startStr = startDate.toISOString().split('T')[0];
             const filtered = prices.filter(p => p.date >= startStr);
@@ -402,7 +499,6 @@ def generate_html():
             }}));
         }}
         
-        // 상위 20개 계산
         function getTop20(period) {{
             const spyPerf = SPY_DATA.performance[period] || 0;
             
@@ -418,12 +514,10 @@ def generate_html():
             return withVsSpy;
         }}
         
-        // 차트 업데이트
         function updateChart() {{
             const startDate = getStartDate(currentPeriod);
             const datasets = [];
             
-            // SPY 데이터 (점선)
             const spyData = calculatePercentChange(SPY_DATA.prices, startDate);
             datasets.push({{
                 label: 'SPY',
@@ -436,7 +530,6 @@ def generate_html():
                 fill: false
             }});
             
-            // 상위 20개 종목
             top20.forEach((stock, i) => {{
                 const stockData = calculatePercentChange(stock.prices, startDate);
                 if (stockData.length === 0) return;
@@ -459,6 +552,7 @@ def generate_html():
                     borderColor: borderColor,
                     borderWidth: borderWidth,
                     pointRadius: 0,
+                    pointHoverRadius: 4,
                     tension: 0.1,
                     fill: false,
                     originalColor: COLORS[i % COLORS.length]
@@ -486,8 +580,10 @@ def generate_html():
                                 backgroundColor: '#1f2937',
                                 titleColor: '#fff',
                                 bodyColor: '#d1d5db',
-                                padding: 10,
-                                bodyFont: {{ size: 11 }},
+                                borderColor: '#374151',
+                                borderWidth: 1,
+                                padding: window.innerWidth <= 600 ? 6 : 10,
+                                bodyFont: {{ size: window.innerWidth <= 600 ? 10 : 11 }},
                                 callbacks: {{
                                     label: (ctx) => `${{ctx.dataset.label}}: ${{ctx.parsed.y >= 0 ? '+' : ''}}${{ctx.parsed.y.toFixed(2)}}%`
                                 }}
@@ -506,13 +602,13 @@ def generate_html():
                                     }}
                                 }},
                                 grid: {{ color: '#222' }},
-                                ticks: {{ color: '#6b7280', font: {{ size: 10 }} }}
+                                ticks: {{ color: '#6b7280', font: {{ size: window.innerWidth <= 600 ? 9 : 10 }} }}
                             }},
                             y: {{
                                 grid: {{ color: '#222' }},
                                 ticks: {{
                                     color: '#6b7280',
-                                    font: {{ size: 10 }},
+                                    font: {{ size: window.innerWidth <= 600 ? 9 : 10 }},
                                     callback: (v) => v + '%'
                                 }}
                             }}
@@ -522,7 +618,6 @@ def generate_html():
             }}
         }}
         
-        // 테이블 업데이트
         function updateTable() {{
             const spyPerf = SPY_DATA.performance[currentPeriod] || 0;
             const spyEl = document.getElementById('spy-perf');
@@ -553,7 +648,6 @@ def generate_html():
                 `;
             }}).join('');
             
-            // 클릭 이벤트
             tbody.querySelectorAll('tr').forEach(row => {{
                 row.addEventListener('click', () => {{
                     const symbol = row.dataset.symbol;
@@ -569,7 +663,6 @@ def generate_html():
             }});
         }}
         
-        // 종목 정보 카드 업데이트
         function updateInfoCard() {{
             const card = document.getElementById('stock-info-card');
             
@@ -597,7 +690,6 @@ def generate_html():
             card.classList.add('visible');
         }}
         
-        // 정보 카드 닫기 버튼
         document.getElementById('info-close').addEventListener('click', () => {{
             selectedStock = null;
             updateChart();
@@ -605,7 +697,6 @@ def generate_html():
             updateInfoCard();
         }});
         
-        // 범례 업데이트
         function updateLegend() {{
             const legend = document.getElementById('legend');
             
@@ -618,16 +709,15 @@ def generate_html():
             legend.innerHTML = html;
         }}
         
-        // 전체 업데이트
         function update() {{
             top20 = getTop20(currentPeriod);
             selectedStock = null;
             updateChart();
             updateTable();
             updateLegend();
+            updateInfoCard();
         }}
         
-        // 기간 버튼 이벤트
         document.querySelectorAll('.period-btn').forEach(btn => {{
             btn.addEventListener('click', () => {{
                 document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
@@ -635,6 +725,17 @@ def generate_html():
                 currentPeriod = btn.dataset.period;
                 update();
             }});
+        }});
+        
+        // 리사이즈 핸들러
+        let resizeTimeout;
+        window.addEventListener('resize', () => {{
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {{
+                if (chart) {{
+                    chart.update('none');
+                }}
+            }}, 200);
         }});
         
         // 초기화
