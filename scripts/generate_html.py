@@ -56,7 +56,7 @@ def generate_html():
         html::-webkit-scrollbar {{ display: none; }}
         html, body {{
             height: 100%;
-            overflow: hidden;
+            overflow: auto;               /* 🔧 스크롤 허용: info card 공간 확보 */
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
         }}
@@ -169,13 +169,20 @@ def generate_html():
             padding: 0 16px;
         }}
 
+        .left-column {{
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }}
+
         /* ====== CHART ====== */
         .chart-container {{
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 14px;
-            min-height: 0;
+            min-height: 350px;            /* 🔧 차트 최소 높이 보장 */
+            flex: 1;
             position: relative;
         }}
         .chart-container::after {{
@@ -279,22 +286,13 @@ def generate_html():
 
         /* ====== STOCK INFO CARD ====== */
         .stock-info-card {{
-            display: none;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 16px;
-            margin: 0 16px;
-            position: fixed;               /* 🔧 오버레이: 레이아웃 영향 없음 */
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 1368px;
-            width: calc(100% - 32px);
-            z-index: 100;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            margin-top: 12px;
+            flex-shrink: 0;
         }}
-        .stock-info-card.visible {{ display: block; }}
         .info-header {{
             display: flex;
             justify-content: space-between;
@@ -304,17 +302,6 @@ def generate_html():
         }}
         .info-title {{ font: 700 16px var(--sans); color: #fff; }}
         .info-sector {{ font-size: 11px; color: var(--text-dim); margin-top: 2px; }}
-        .info-close {{
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 18px;
-            cursor: pointer;
-            padding: 4px 8px;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }}
-        .info-close:hover {{ color: #fff; }}
         .info-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -397,7 +384,11 @@ def generate_html():
                 gap: 8px;
                 padding: 0 10px;
             }}
+            .left-column {{
+                min-height: auto;
+            }}
             .chart-container {{
+                flex: none;                /* 📱 모바일: flex 해제 */
                 padding: 8px 4px 8px 8px;
                 border-radius: 10px;
             }}
@@ -420,7 +411,7 @@ def generate_html():
                 font-size: 9px;
             }}
             .legend-dot {{ width: 6px; height: 6px; }}
-            .stock-info-card {{ margin: 0 10px; width: calc(100% - 20px); padding: 12px; }}
+            .stock-info-card {{ margin-top: 8px; padding: 12px; }}
             .info-grid {{ grid-template-columns: repeat(3, 1fr); gap: 8px; }}
             .info-value {{ font-size: 12px; }}
             .info-title {{ font-size: 14px; }}
@@ -469,8 +460,45 @@ def generate_html():
         </div>
 
         <div class="main-content">
-            <div class="chart-container">
-                <canvas id="perfChart"></canvas>
+            <div class="left-column">
+                <div class="chart-container">
+                    <canvas id="perfChart"></canvas>
+                </div>
+                <div class="stock-info-card" id="stock-info-card">
+                    <div class="info-header">
+                        <div>
+                            <div class="info-title" id="info-title">-</div>
+                            <div class="info-sector" id="info-sector">-</div>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">시가총액</div>
+                            <div class="info-value" id="info-marketcap">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">현재가</div>
+                            <div class="info-value" id="info-price">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">52주 최고</div>
+                            <div class="info-value" id="info-high52">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">52주 최저</div>
+                            <div class="info-value" id="info-low52">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">PER</div>
+                            <div class="info-value" id="info-per">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">PBR</div>
+                            <div class="info-value" id="info-pbr">-</div>
+                        </div>
+                    </div>
+                    <div class="info-description" id="info-description">-</div>
+                </div>
             </div>
             <div class="table-container">
                 <div class="table-header">
@@ -493,43 +521,6 @@ def generate_html():
         </div>
 
         <div class="legend" id="legend"></div>
-
-        <div class="stock-info-card" id="stock-info-card">
-            <div class="info-header">
-                <div>
-                    <div class="info-title" id="info-title">-</div>
-                    <div class="info-sector" id="info-sector">-</div>
-                </div>
-                <button class="info-close" id="info-close">✕</button>
-            </div>
-            <div class="info-grid">
-                <div class="info-item">
-                    <div class="info-label">시가총액</div>
-                    <div class="info-value" id="info-marketcap">-</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">현재가</div>
-                    <div class="info-value" id="info-price">-</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">52주 최고</div>
-                    <div class="info-value" id="info-high52">-</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">52주 최저</div>
-                    <div class="info-value" id="info-low52">-</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">PER</div>
-                    <div class="info-value" id="info-per">-</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">PBR</div>
-                    <div class="info-value" id="info-pbr">-</div>
-                </div>
-            </div>
-            <div class="info-description" id="info-description">-</div>
-        </div>
 
         <div class="footer">데이터 출처: Yahoo Finance · S&P 500 + Nasdaq 100 기준 · 투자 판단은 본인의 책임입니다</div>
     </div>
@@ -776,11 +767,7 @@ def generate_html():
             tbody.querySelectorAll('tr').forEach(row => {{
                 row.addEventListener('click', () => {{
                     const symbol = row.dataset.symbol;
-                    if (selectedStock === symbol) {{
-                        selectedStock = null;
-                    }} else {{
-                        selectedStock = symbol;
-                    }}
+                    selectedStock = symbol;
                     updateChart();
                     updateTable();
                     updateInfoCard();
@@ -789,16 +776,9 @@ def generate_html():
         }}
 
         function updateInfoCard() {{
-            const card = document.getElementById('stock-info-card');
-            if (!selectedStock) {{
-                card.classList.remove('visible');
-                return;
-            }}
+            if (!selectedStock) return;
             const info = STOCK_INFO[selectedStock];
-            if (!info || !info.name) {{
-                card.classList.remove('visible');
-                return;
-            }}
+            if (!info || !info.name) return;
             document.getElementById('info-title').textContent = `${{selectedStock}} - ${{info.name}}`;
             document.getElementById('info-sector').textContent = info.sector || '-';
             document.getElementById('info-marketcap').textContent = info.marketCap || '-';
@@ -808,15 +788,7 @@ def generate_html():
             document.getElementById('info-per').textContent = info.per || '-';
             document.getElementById('info-pbr').textContent = info.pbr || '-';
             document.getElementById('info-description').textContent = info.description || '설명 없음';
-            card.classList.add('visible');
         }}
-
-        document.getElementById('info-close').addEventListener('click', () => {{
-            selectedStock = null;
-            updateChart();
-            updateTable();
-            updateInfoCard();
-        }});
 
         function updateLegend() {{
             const legend = document.getElementById('legend');
@@ -829,7 +801,7 @@ def generate_html():
 
         function update() {{
             top20 = getTop20(currentPeriod);
-            selectedStock = null;
+            selectedStock = top20.length > 0 ? top20[0].symbol : null;
             updateChart();
             updateTable();
             updateLegend();
