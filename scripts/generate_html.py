@@ -284,8 +284,15 @@ def generate_html():
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 16px;
-            margin: 10px 16px 0;
-            flex-shrink: 0;
+            margin: 0 16px;
+            position: fixed;               /* 🔧 오버레이: 레이아웃 영향 없음 */
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 1368px;
+            width: calc(100% - 32px);
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
         }}
         .stock-info-card.visible {{ display: block; }}
         .info-header {{
@@ -413,7 +420,7 @@ def generate_html():
                 font-size: 9px;
             }}
             .legend-dot {{ width: 6px; height: 6px; }}
-            .stock-info-card {{ margin: 8px 10px 0; padding: 12px; }}
+            .stock-info-card {{ margin: 0 10px; width: calc(100% - 20px); padding: 12px; }}
             .info-grid {{ grid-template-columns: repeat(3, 1fr); gap: 8px; }}
             .info-value {{ font-size: 12px; }}
             .info-title {{ font-size: 14px; }}
