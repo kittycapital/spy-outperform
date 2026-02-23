@@ -350,6 +350,18 @@ def generate_html():
 
         /* === MOBILE === */
         @media (max-width: 600px) {{
+            html, body {{
+                height: auto;              /* 📱 모바일: 고정 높이 해제 */
+                overflow: auto;            /* 📱 모바일: 스크롤 허용 */
+            }}
+            .container {{
+                height: auto;
+                min-height: 100%;
+            }}
+            .chart-container {{
+                min-height: 300px;         /* 📱 차트 최소 높이 ← 여기서 조절 */
+                height: 45vh;
+            }}
             .header {{
                 padding: 14px 12px 10px;
             }}
@@ -374,7 +386,7 @@ def generate_html():
             .spy-info {{ font-size: 11px; padding: 5px 10px; }}
             .main-content {{
                 grid-template-columns: 1fr;
-                grid-template-rows: 1fr auto;
+                grid-template-rows: auto auto;   /* 📱 자동 높이 */
                 gap: 8px;
                 padding: 0 10px;
             }}
@@ -519,7 +531,7 @@ def generate_html():
 
     <script>
         /* ====== SHARE ====== */
-        const SHARE_URL = 'https://herdvibe.com/spy-outperformers';
+        const SHARE_URL = 'https://herdvibe.com/25';
         const SHARE_TITLE = 'SPY 대비 상위 종목 — Herdvibe';
         const SHARE_DESC = 'S&P 500 + Nasdaq 100 SPY 초과 수익 상위 20 종목 | Herdvibe';
 
