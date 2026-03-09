@@ -3,7 +3,7 @@ name: 📊 SPY 대비 상위 종목 업데이트
 on:
   schedule:
     # 매일 UTC 14:00 (한국시간 23:00, 미국장 마감 후)
-    - cron: '0 14 * * *'
+    - cron: '0 14 * * 1-5'  # 평일만
   workflow_dispatch:  # 수동 실행
 
 jobs:
